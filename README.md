@@ -1,4 +1,4 @@
-# IR-Chat
+# CardputerZero IR-Chat
 
 Runtime-only infrared chat for M5Stack CardputerZero.
 
