@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=IR-Chat
+Exec=/usr/share/APPLaunch/bin/M5CardputerZero-IR-Chat
+Terminal=false
+Icon=share/images/ir-chat.png
+Type=Application
