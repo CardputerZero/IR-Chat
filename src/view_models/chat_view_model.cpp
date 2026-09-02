@@ -33,6 +33,7 @@ void ChatViewModel::onEnter()
     _compose_active.set(false);
     const auto& info = _model.radioInfo().get();
     _section.set(info.state == RadioUiState::Error ? ChatSection::Info : ChatSection::Messages);
+    _help_active.set(false);
     _last_state                 = info.state;
     _last_initialization_failed = info.state == RadioUiState::Error && info.initializationFailed;
     _initialization_dialog_active.set(_last_initialization_failed);
@@ -45,10 +46,23 @@ void ChatViewModel::onExit()
         _compose_active.set(false);
     }
     _initialization_dialog_active.set(false);
+    _help_active.set(false);
 }
 
 void ChatViewModel::onKey(uint32_t key)
 {
+    if (key == ir_chat_key::Help) {
+        _help_active.set(!_help_active.get());
+        return;
+    }
+
+    if (_help_active.get()) {
+        if (key == '\x1b') {
+            _help_active.set(false);
+        }
+        return;
+    }
+
     if (_initialization_dialog_active.get()) {
         if (key == '\x1b') {
             dismissInitializationDialog();

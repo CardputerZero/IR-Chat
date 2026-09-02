@@ -60,9 +60,14 @@ public:
         return _initialization_dialog_active;
     }
 
+    smooth_ui_toolkit::SingleObservable<bool>& helpActive()
+    {
+        return _help_active;
+    }
+
     bool modalActive() const
     {
-        return _compose_active.get() || _initialization_dialog_active.get();
+        return _compose_active.get() || _initialization_dialog_active.get() || _help_active.get();
     }
 
     void setDraft(std::string draft);
@@ -77,6 +82,7 @@ private:
     smooth_ui_toolkit::SingleObservable<ChatScrollRequest> _scroll_request{ChatScrollRequest{}};
     smooth_ui_toolkit::SingleObservable<bool> _compose_active{false};
     smooth_ui_toolkit::SingleObservable<bool> _initialization_dialog_active{false};
+    smooth_ui_toolkit::SingleObservable<bool> _help_active{false};
     uint32_t _scroll_serial          = 0;
     RadioUiState _last_state         = RadioUiState::Initializing;
     bool _last_initialization_failed = false;

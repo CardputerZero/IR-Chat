@@ -116,6 +116,45 @@ private:
     std::unique_ptr<TextLabel> _label;
 };
 
+class HelpDialog {
+public:
+    explicit HelpDialog(lv_obj_t* parent)
+        : _panel(std::make_unique<Panel>(parent, Frame{0, 0, kScreenWidth, kScreenHeight}, 0x111315, LV_OPA_COVER)),
+          _title(std::make_unique<TextLabel>(_panel->raw_ptr(), "IR Chat", Frame{12, 8, 296, 22},
+                                             &lv_font_montserrat_18, 0xF3F3F3, LV_TEXT_ALIGN_CENTER)),
+          _divider(std::make_unique<Panel>(_panel->raw_ptr(), Frame{12, 36, 296, 1}, 0x34383D, LV_OPA_COVER)),
+          _body(std::make_unique<TextLabel>(
+              _panel->raw_ptr(),
+              "Send and receive messages via infrared, with support for multiple devices.\n"
+              "Type directly to compose messages.\n\n"
+              "F / X / Up / Down: navigate and scroll\n"
+              "Z / C: messages / radio info\n"
+              "Enter: compose or send",
+              Frame{16, 43, 288, 109}, &lv_font_montserrat_10, 0xDDE0E4, LV_TEXT_ALIGN_LEFT)),
+          _footer(std::make_unique<TextLabel>(_panel->raw_ptr(), "Fn+H / Esc: close", Frame{12, 154, 296, 13},
+                                              &lv_font_montserrat_10, 0x8FD6A5, LV_TEXT_ALIGN_CENTER))
+    {
+        _panel->setHidden(true);
+    }
+
+    void setActive(bool active)
+    {
+        if (active) {
+            _panel->setHidden(false);
+            _panel->moveForeground();
+        } else {
+            _panel->setHidden(true);
+        }
+    }
+
+private:
+    std::unique_ptr<Panel> _panel;
+    std::unique_ptr<TextLabel> _title;
+    std::unique_ptr<Panel> _divider;
+    std::unique_ptr<TextLabel> _body;
+    std::unique_ptr<TextLabel> _footer;
+};
+
 lv_group_t* keyboardGroup()
 {
     lv_indev_t* inputDevice = lv_indev_get_next(nullptr);
@@ -1063,6 +1102,7 @@ public:
           _indicator(std::make_unique<PageIndicator>(parent)),
           _compose_dialog(std::make_unique<ComposeDialog>(parent, viewModel)),
           _initialization_failure_dialog(std::make_unique<InitializationFailureDialog>(parent, viewModel)),
+          _help_dialog(std::make_unique<HelpDialog>(parent)),
           _messages_opacity(255),
           _info_opacity(0)
     {
@@ -1112,6 +1152,16 @@ public:
             _indicator->setHidden(true);
         }
         _initialization_failure_dialog->setActive(active);
+    }
+
+    void setHelpActive(bool active)
+    {
+        _help_active = active;
+        if (active) {
+            _messages->dismissTitle();
+            _indicator->setHidden(true);
+        }
+        _help_dialog->setActive(active);
     }
 
     void setSection(ChatSection section)
@@ -1170,7 +1220,7 @@ public:
         applyOpacity();
         _compose_dialog->tick(nowMs);
         _initialization_failure_dialog->tick(nowMs);
-        if (!_compose_active && !_initialization_dialog_active && _compose_dialog->hidden() &&
+        if (!_compose_active && !_initialization_dialog_active && !_help_active && _compose_dialog->hidden() &&
             _initialization_failure_dialog->hidden()) {
             _indicator->setHidden(false);
         }
@@ -1189,12 +1239,14 @@ private:
     std::unique_ptr<PageIndicator> _indicator;
     std::unique_ptr<ComposeDialog> _compose_dialog;
     std::unique_ptr<InitializationFailureDialog> _initialization_failure_dialog;
+    std::unique_ptr<HelpDialog> _help_dialog;
     AnimateValue _messages_opacity;
     AnimateValue _info_opacity;
     ChatSection _section               = ChatSection::Messages;
     bool _section_initialized          = false;
     bool _compose_active               = false;
     bool _initialization_dialog_active = false;
+    bool _help_active                  = false;
 
     static void configureFade(AnimateValue& opacity)
     {
@@ -1245,11 +1297,13 @@ void ChatView::onEnter(lv_obj_t* parent)
     _view_model.composeStatus().observe(this, onComposeStatusChanged);
     _view_model.composeActive().observe(this, onComposeActiveChanged);
     _view_model.initializationDialogActive().observe(this, onInitializationDialogActiveChanged);
+    _view_model.helpActive().observe(this, onHelpActiveChanged);
 }
 
 void ChatView::onExit()
 {
     _view_model.initializationDialogActive().removeObserver();
+    _view_model.helpActive().removeObserver();
     _view_model.composeActive().removeObserver();
     _view_model.composeStatus().removeObserver();
     _view_model.draft().removeObserver();
@@ -1336,6 +1390,14 @@ void ChatView::onInitializationDialogActiveChanged(void* context, const bool& ac
     auto* self = static_cast<ChatView*>(context);
     if (self && self->_pager) {
         self->_pager->setInitializationDialogActive(active);
+    }
+}
+
+void ChatView::onHelpActiveChanged(void* context, const bool& active)
+{
+    auto* self = static_cast<ChatView*>(context);
+    if (self && self->_pager) {
+        self->_pager->setHelpActive(active);
     }
 }
 

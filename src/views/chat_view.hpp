@@ -35,6 +35,7 @@ private:
     static void onComposeStatusChanged(void* context, const std::string& status);
     static void onComposeActiveChanged(void* context, const bool& active);
     static void onInitializationDialogActiveChanged(void* context, const bool& active);
+    static void onHelpActiveChanged(void* context, const bool& active);
 };
 
 }  // namespace ir_chat
