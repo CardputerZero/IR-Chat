@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(M5CardputerZeroIRChat VERSION 0.1.1 LANGUAGES C CXX ASM)
+project(M5CardputerZeroIRChat VERSION 0.1.2 LANGUAGES C CXX ASM)
 
 option(IR_CHAT_USE_SDL "Use LVGL's SDL backend and mock IR transport" ON)
 option(IR_CHAT_BUILD_TESTS "Build IR Chat unit tests" OFF)
