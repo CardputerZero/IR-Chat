@@ -131,7 +131,7 @@ public:
               "Z / C: messages / radio info\n"
               "Enter: compose or send",
               Frame{16, 43, 288, 109}, &lv_font_montserrat_10, 0xDDE0E4, LV_TEXT_ALIGN_LEFT)),
-          _footer(std::make_unique<TextLabel>(_panel->raw_ptr(), "Fn+H / Esc: close", Frame{12, 154, 296, 13},
+          _footer(std::make_unique<TextLabel>(_panel->raw_ptr(), "KEY_HELP / Esc: close", Frame{12, 154, 296, 13},
                                               &lv_font_montserrat_10, 0x8FD6A5, LV_TEXT_ALIGN_CENTER))
     {
         _panel->setHidden(true);
