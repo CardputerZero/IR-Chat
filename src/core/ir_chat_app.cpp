@@ -161,6 +161,9 @@ bool IRChatApp::onLvglKeyState(uint32_t lvKey, const char* utf8, bool pressed)
         case LV_KEY_ENTER:
             onKey('\r');
             return true;
+        case ir_chat_key::Help:
+            onKey(ir_chat_key::Help);
+            return true;
         default:
             break;
     }
