@@ -11,9 +11,9 @@
 
 namespace ir_chat::radio {
 
-// Linux rc-core caps a raw IR transmission at 500 ms. A 23-byte printable
-// ASCII payload fits even with the longest possible pulse-distance frame.
-inline constexpr std::size_t kMaxPayloadSize = 23;
+// Conservative single-frame message limit: at most 243 pulse/space timings
+// and less than 250 ms on air. Optical reliability still requires device testing.
+inline constexpr std::size_t kMaxPayloadSize = 7;
 
 enum class RadioState {
     Stopped,

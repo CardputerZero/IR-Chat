@@ -77,7 +77,7 @@ uint64_t worstCasePrintableFrameDuration(std::size_t payloadSize)
 
 void testRoundTrip()
 {
-    const auto payload   = bytes("hello infrared");
+    const auto payload   = bytes("hello");
     const auto durations = ir_chat::radio::encodeIrChatFrame(0x1234, payload);
 
     IrChatStreamDecoder decoder;
@@ -98,7 +98,7 @@ void testKnownCrcVector()
 
 void testStreamingAcrossCalls()
 {
-    const auto payload           = bytes("split input");
+    const auto payload           = bytes("split");
     const auto durations         = ir_chat::radio::encodeIrChatFrame(7, payload);
     const std::size_t first_end  = durations.size() / 3;
     const std::size_t second_end = durations.size() * 2 / 3;
@@ -112,7 +112,7 @@ void testStreamingAcrossCalls()
 
 void testTimingToleranceAndNoiseRecovery()
 {
-    const auto payload = bytes("jitter");
+    const auto payload = bytes("noise");
     auto durations     = ir_chat::radio::encodeIrChatFrame(91, payload);
     for (std::size_t index = 0; index < durations.size(); ++index) {
         const int adjustment = index % 3 == 0 ? -18 : (index % 3 == 1 ? 16 : 0);
@@ -129,8 +129,8 @@ void testTimingToleranceAndNoiseRecovery()
 
 void testCrcFailureIsIgnoredAndDecoderRecovers()
 {
-    auto corrupted                    = ir_chat::radio::encodeIrChatFrame(3, bytes("bad crc"));
-    const std::size_t first_crc_space = 2 + (6 + bytes("bad crc").size()) * 16 + 1;
+    auto corrupted                    = ir_chat::radio::encodeIrChatFrame(3, bytes("bad"));
+    const std::size_t first_crc_space = 2 + (6 + bytes("bad").size()) * 16 + 1;
     require(first_crc_space < corrupted.size(), "CRC test index must be inside waveform");
     corrupted[first_crc_space] = corrupted[first_crc_space] == ir_chat::radio::kIrChatZeroSpaceUs
                                      ? ir_chat::radio::kIrChatOneSpaceUs
@@ -140,7 +140,7 @@ void testCrcFailureIsIgnoredAndDecoderRecovers()
     require(!feedDurations(decoder, corrupted), "CRC-corrupted frame must not be emitted");
     require(decoder.stats().crc_errors == 1, "CRC failure must be counted");
 
-    const auto valid = ir_chat::radio::encodeIrChatFrame(4, bytes("recovered"));
+    const auto valid = ir_chat::radio::encodeIrChatFrame(4, bytes("okay"));
     const auto frame = feedDurations(decoder, valid);
     require(frame && frame->sequence == 4, "decoder must recover after a corrupt frame");
 }
@@ -153,8 +153,10 @@ void testLimitsAndPrintablePayload()
     require(frame && frame->payload == maximum, "maximum payload must round-trip");
     require(worstCasePrintableFrameDuration(ir_chat::radio::kMaxPayloadSize) <= kLinuxLircMaxDurationUs,
             "maximum payload must fit Linux LIRC's 500 ms transmit limit for every printable payload");
-    require(worstCasePrintableFrameDuration(ir_chat::radio::kMaxPayloadSize + 1) > kLinuxLircMaxDurationUs,
-            "the payload limit must retain its 500 ms safety boundary");
+    require(worstCasePrintableFrameDuration(ir_chat::radio::kMaxPayloadSize) < 250000,
+            "the candidate message limit must keep every printable frame below the chosen 250 ms budget");
+    require(worstCasePrintableFrameDuration(ir_chat::radio::kMaxPayloadSize + 1) > 250000,
+            "the next payload length must exceed the conservative 250 ms bound");
 
     bool oversized_rejected = false;
     try {
@@ -173,10 +175,45 @@ void testLimitsAndPrintablePayload()
     require(binary_rejected, "non-printable payload must be rejected");
 }
 
+void testShortMessageLimits()
+{
+    using namespace ir_chat::radio;
+    require(kMaxPayloadSize == 7, "candidate message limit must remain seven printable characters");
+    for (std::size_t length = 1; length <= kMaxPayloadSize; ++length) {
+        for (uint8_t value = 0x20; value <= 0x7e; ++value) {
+            for (uint16_t sequence : {0, 1, 0xffff}) {
+                const std::vector<uint8_t> payload(length, value);
+                const auto waveform = encodeIrChatFrame(sequence, payload);
+                require(waveform.size() <= 243 && waveform.size() % 2 == 1,
+                        "short frames must fit the timing budget and end on a pulse");
+                IrChatStreamDecoder decoder;
+                const auto frame = feedDurations(decoder, waveform);
+                require(frame && frame->payload == payload && frame->sequence == sequence,
+                        "every supported length and printable byte must round-trip");
+            }
+        }
+    }
+    for (const auto& input : {std::string("1"), std::string("1234567")}) {
+        IrChatStreamDecoder decoder;
+        const auto frame = feedDurations(decoder, encodeIrChatFrame(42, bytes(input)));
+        require(frame && frame->payload == bytes(input), "single digit and maximum digits must round-trip");
+    }
+    for (const auto& input : {std::string(""), std::string("12345678"), std::string("12345678901234567890123")}) {
+        bool rejected = false;
+        try {
+            encodeIrChatFrame(42, bytes(input));
+        } catch (const std::invalid_argument&) {
+            rejected = true;
+        }
+        require(rejected, "empty, eight-character and reported 23-digit messages must be rejected before transmission");
+    }
+}
+
 }  // namespace
 
 int main()
 {
+    testShortMessageLimits();
     testKnownCrcVector();
     testRoundTrip();
     testStreamingAcrossCalls();

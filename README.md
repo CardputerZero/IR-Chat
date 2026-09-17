@@ -6,12 +6,40 @@ Runtime-only infrared chat for M5Stack CardputerZero.
 
 - Send and receive messages with a compact custom 38 kHz raw IR protocol
 - Keep up to 64 messages in memory for the current session only
-- Accept messages up to 23 printable ASCII bytes
+- Accept messages up to 7 printable ASCII bytes
 - Discover receiver and transmitter nodes by LIRC capability instead of device number
 - Use a loopback mock backend for SDL desktop development
 
 IR requires line of sight. This protocol is specific to IR Chat and is not an
 infrared remote-control protocol.
+
+Messages use the original v1 single-frame protocol. The editor and transport
+share a 7-character limit (printable ASCII only). The editor caps input at
+7 characters, and the transport rejects oversized payloads.
+
+The candidate limit keeps a frame at 243 pulse/space timings or fewer. Its
+conservative airtime bound is 243.38 ms, versus 496.35 ms for the previous
+23-character limit. Eight characters have a conservative bound of 256.86 ms,
+so seven is the largest length below the chosen 250 ms budget. This budget is
+an engineering target, not a measured device limit or a guarantee of reception.
+The original 23-digit failure has not been reproduced on physical devices.
+
+For hardware regression testing, install this candidate on both devices:
+
+- Keep distance and alignment fixed and record both devices' software/kernel
+  versions and selected RX/TX drivers.
+- Send `1`, `12345`, `1234567`, `0000000`, and `~~~~~~~` 100 times each in each
+  direction, waiting for each transmission to finish before the next one.
+- Record sender errors, receiver missing/corrupted/duplicate messages and
+  recovery on the next send. Distinguish a failed local write from a completed
+  write whose message did not arrive. Retain the application logs from both
+  devices, including sequence, event count, airtime and any errno/CRC errors.
+- Verify that the editor prevents an eighth character and that a failed or
+  obstructed transmission does not prevent subsequent unobstructed messages.
+
+Treat any failure as requiring investigation before accepting the candidate.
+Successful local transmission does not acknowledge reception by the peer.
+Offline codec tests cannot establish optical reliability.
 
 ## Dependencies
 
